@@ -44,11 +44,21 @@ button {
   cursor: pointer;
 }
 
+.matrix-rain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.28;
+  mix-blend-mode: screen;
+}
+
 .bg-grid {
   pointer-events: none;
   position: fixed;
   inset: 0;
-  opacity: 0.22;
+  z-index: 0;
+  opacity: 0.16;
   background-image:
     linear-gradient(rgba(52, 211, 153, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(52, 211, 153, 0.06) 1px, transparent 1px);
@@ -68,7 +78,7 @@ button {
   border-radius: 24px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(20px);
 }
 
 .hero {
@@ -208,6 +218,20 @@ select {
   padding: 13px 14px;
   outline: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.card,
+textarea,
+input,
+select,
+.hero__status,
+.chip,
+.btn,
+.history-item,
+.favorite-item,
+.empty {
+  position: relative;
+  z-index: 1;
 }
 
 textarea {
