@@ -8,6 +8,7 @@
       content="Translatorvg — versão GitHub Pages do tradutor com histórico, idiomas e tradução de texto."
     />
     <title>Translatorvg</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -28,25 +29,10 @@
           <span class="status-dot" id="apiDot"></span>
           <div>
             <p class="status-label">Translation API</p>
-            <p class="status-value" id="apiStatus">Conectando…</p>
+            <p class="status-value" id="apiStatus">MyMemory online</p>
           </div>
         </div>
       </header>
-
-      <section class="toolbar card">
-        <div class="toolbar__group">
-          <label for="endpointSelect">Endpoint</label>
-          <div class="toolbar__row">
-            <select id="endpointSelect"></select>
-            <input id="customEndpoint" type="url" placeholder="Endpoint customizado" />
-          </div>
-        </div>
-
-        <div class="toolbar__group toolbar__group--compact">
-          <button class="btn btn--secondary" id="saveEndpoint" type="button">Salvar endpoint</button>
-          <button class="btn btn--ghost" id="refreshLanguages" type="button">Atualizar idiomas</button>
-        </div>
-      </section>
 
       <section class="layout">
         <div class="column">

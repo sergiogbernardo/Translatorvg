@@ -1,10 +1,6 @@
-const DEFAULT_ENDPOINTS = [
-  'https://libretranslate.com',
-  'https://translate.argosopentech.com',
-  'https://translate.astian.org',
-];
+const MYMEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
 
-const FALLBACK_LANGUAGES = [
+const LANGUAGES = [
   { code: 'auto', name: 'Auto detect' },
   { code: 'en', name: 'English' },
   { code: 'pt', name: 'Português' },
@@ -19,7 +15,6 @@ const FALLBACK_LANGUAGES = [
 ];
 
 const STORAGE_KEYS = {
-  endpoint: 'translatorvg-endpoint',
   sourceLang: 'translatorvg-source-lang',
   targetLang: 'translatorvg-target-lang',
   history: 'translatorvg-history',
@@ -29,8 +24,6 @@ const STORAGE_KEYS = {
 const cache = new Map();
 
 const state = {
-  endpoint: localStorage.getItem(STORAGE_KEYS.endpoint) || DEFAULT_ENDPOINTS[0],
-  languages: [...FALLBACK_LANGUAGES],
   sourceLang: localStorage.getItem(STORAGE_KEYS.sourceLang) || 'auto',
   targetLang: localStorage.getItem(STORAGE_KEYS.targetLang) || 'en',
   history: loadJSON(STORAGE_KEYS.history, []),
@@ -39,16 +32,11 @@ const state = {
   result: '',
   detectedLang: null,
   loading: false,
-  copied: false,
 };
 
 const els = {
   apiDot: document.getElementById('apiDot'),
   apiStatus: document.getElementById('apiStatus'),
-  endpointSelect: document.getElementById('endpointSelect'),
-  customEndpoint: document.getElementById('customEndpoint'),
-  saveEndpoint: document.getElementById('saveEndpoint'),
-  refreshLanguages: document.getElementById('refreshLanguages'),
   sourceLang: document.getElementById('sourceLang'),
   targetLang: document.getElementById('targetLang'),
   swapLanguages: document.getElementById('swapLanguages'),
@@ -71,265 +59,147 @@ const els = {
 init();
 
 function init() {
-  populateEndpointSelect();
-  syncSettingsInputs();
+  renderLanguageSelects();
+  syncLanguageSelects();
   wireEvents();
   renderAll();
-  refreshLanguages().catch(() => null);
+  setStatus('ok', 'MyMemory online');
 }
 
 function wireEvents() {
-  els.endpointSelect?.addEventListener('change', () => {
-    const value = els.endpointSelect.value;
-    els.customEndpoint.value = value.startsWith('custom:')
-      ? value.slice('custom:'.length)
-      : '';
-  });
-
-  els.saveEndpoint?.addEventListener('click', () => {
-    const selected = els.endpointSelect.value;
-    const customValue = els.customEndpoint.value.trim();
-    const endpoint = selected === 'custom:' || selected.startsWith('custom:')
-      ? customValue
-      : selected;
-
-    if (!endpoint) {
-      setStatus('warning', 'Informe um endpoint válido.');
-      return;
-    }
-
-    state.endpoint = endpoint.replace(/\/$/, '');
-    localStorage.setItem(STORAGE_KEYS.endpoint, state.endpoint);
-    populateEndpointSelect();
-    setStatus('warning', 'Endpoint salvo. Atualizando idiomas…');
-    refreshLanguages().catch((error) => {
-      setStatus('error', error.message || 'Falha ao conectar.');
-    });
-  });
-
-  els.refreshLanguages?.addEventListener('click', () => {
-    refreshLanguages().catch((error) => {
-      setStatus('error', error.message || 'Falha ao conectar.');
-    });
-  });
-
-  els.sourceLang?.addEventListener('change', () => {
+  els.sourceLang.addEventListener('change', () => {
     state.sourceLang = els.sourceLang.value;
     localStorage.setItem(STORAGE_KEYS.sourceLang, state.sourceLang);
+    updateFavoriteButton();
     autoTranslate();
   });
 
-  els.targetLang?.addEventListener('change', () => {
+  els.targetLang.addEventListener('change', () => {
     state.targetLang = els.targetLang.value;
     localStorage.setItem(STORAGE_KEYS.targetLang, state.targetLang);
+    updateFavoriteButton();
     autoTranslate();
   });
 
-  els.swapLanguages?.addEventListener('click', () => {
-    const nextSource = state.sourceLang === 'auto' ? state.detectedLang || state.targetLang : state.sourceLang;
+  els.swapLanguages.addEventListener('click', () => {
+    const currentSource = state.sourceLang === 'auto' ? state.detectedLang || state.targetLang : state.sourceLang;
     state.sourceLang = state.targetLang;
-    state.targetLang = nextSource;
+    state.targetLang = currentSource;
     localStorage.setItem(STORAGE_KEYS.sourceLang, state.sourceLang);
     localStorage.setItem(STORAGE_KEYS.targetLang, state.targetLang);
     syncLanguageSelects();
     autoTranslate(true);
   });
 
-  els.toggleFavorite?.addEventListener('click', () => {
+  els.toggleFavorite.addEventListener('click', () => {
     const pair = { source: state.sourceLang, target: state.targetLang };
     const exists = state.favorites.some(
       (item) => item.source === pair.source && item.target === pair.target,
     );
 
-    if (exists) {
-      state.favorites = state.favorites.filter(
-        (item) => !(item.source === pair.source && item.target === pair.target),
-      );
-    } else {
-      state.favorites = [...state.favorites, pair].slice(-8);
-    }
+    state.favorites = exists
+      ? state.favorites.filter((item) => !(item.source === pair.source && item.target === pair.target))
+      : [...state.favorites, pair].slice(-8);
 
     persistJSON(STORAGE_KEYS.favorites, state.favorites);
     renderFavorites();
     updateFavoriteButton();
   });
 
-  els.sourceText?.addEventListener('input', () => {
+  els.sourceText.addEventListener('input', () => {
     state.text = els.sourceText.value;
     autoTranslate();
   });
 
-  els.translateBtn?.addEventListener('click', () => translateNow(true));
-  els.clearBtn?.addEventListener('click', clearInput);
-  els.copyResult?.addEventListener('click', copyResult);
-  els.speakResult?.addEventListener('click', speakResult);
-  els.clearHistory?.addEventListener('click', () => {
+  els.translateBtn.addEventListener('click', () => translateNow(true));
+  els.clearBtn.addEventListener('click', clearInput);
+  els.copyResult.addEventListener('click', copyResult);
+  els.speakResult.addEventListener('click', speakResult);
+  els.clearHistory.addEventListener('click', () => {
     state.history = [];
     persistJSON(STORAGE_KEYS.history, state.history);
     renderHistory();
   });
 }
 
-function populateEndpointSelect() {
-  const current = state.endpoint;
-  const values = [
-    ...DEFAULT_ENDPOINTS,
-    ...(current && !DEFAULT_ENDPOINTS.includes(current) ? [current] : []),
-  ];
+function renderLanguageSelects() {
+  els.sourceLang.innerHTML = '';
+  els.targetLang.innerHTML = '';
 
-  els.endpointSelect.innerHTML = '';
-  values.forEach((value) => {
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = value;
-    els.endpointSelect.append(option);
-  });
-
-  const customOption = document.createElement('option');
-  customOption.value = `custom:${current}`;
-  customOption.textContent = 'Custom endpoint';
-  els.endpointSelect.append(customOption);
-
-  if (DEFAULT_ENDPOINTS.includes(current)) {
-    els.endpointSelect.value = current;
-    els.customEndpoint.value = '';
-  } else {
-    els.endpointSelect.value = `custom:${current}`;
-    els.customEndpoint.value = current;
-  }
-}
-
-function syncSettingsInputs() {
-  syncLanguageSelects();
-  els.sourceText.value = state.text;
-}
-
-function syncLanguageSelects() {
-  renderLanguages();
-  els.sourceLang.value = state.sourceLang;
-  els.targetLang.value = state.targetLang;
-  updateFavoriteButton();
-}
-
-function renderLanguages() {
-  const languages = state.languages.length ? state.languages : FALLBACK_LANGUAGES;
-  const sourceSelect = els.sourceLang;
-  const targetSelect = els.targetLang;
-  sourceSelect.innerHTML = '';
-  targetSelect.innerHTML = '';
-
-  languages.forEach((language) => {
+  LANGUAGES.forEach((language) => {
     const sourceOption = document.createElement('option');
     sourceOption.value = language.code;
     sourceOption.textContent = language.name;
-    sourceSelect.append(sourceOption);
+    els.sourceLang.append(sourceOption);
 
     if (language.code !== 'auto') {
       const targetOption = document.createElement('option');
       targetOption.value = language.code;
       targetOption.textContent = language.name;
-      targetSelect.append(targetOption);
+      els.targetLang.append(targetOption);
     }
   });
 }
 
-async function refreshLanguages() {
-  setStatus('warning', 'Conectando à API…');
-  const endpoints = uniqueEndpoints();
-
-  for (const endpoint of endpoints) {
-    try {
-      const langs = await requestJSON(`${endpoint}/languages`);
-      if (!Array.isArray(langs) || !langs.length) continue;
-
-      state.endpoint = endpoint;
-      state.languages = [{ code: 'auto', name: 'Auto detect' }, ...langs];
-      localStorage.setItem(STORAGE_KEYS.endpoint, state.endpoint);
-      populateEndpointSelect();
-      syncLanguageSelects();
-      setStatus('ok', `API pronta em ${stripProtocol(endpoint)}`);
-      return;
-    } catch {
-      // Try the next endpoint.
-    }
-  }
-
-  state.languages = [...FALLBACK_LANGUAGES];
-  syncLanguageSelects();
-  setStatus('warning', 'API indisponível. Você pode ajustar o endpoint.');
-  throw new Error('Nenhum endpoint respondeu.');
+function syncLanguageSelects() {
+  els.sourceLang.value = state.sourceLang;
+  els.targetLang.value = state.targetLang;
+  updateFavoriteButton();
 }
 
-function uniqueEndpoints() {
-  const endpoints = [state.endpoint, ...DEFAULT_ENDPOINTS];
-  return [...new Set(endpoints.map((item) => item.replace(/\/$/, '')))];
-}
-
-async function translateNow(manual = false) {
-  const text = els.sourceText.value.trim();
+async function translateNow(saveHistory = false) {
+  const input = els.sourceText.value.trim();
   state.text = els.sourceText.value;
 
-  if (!text) {
+  if (!input) {
     state.result = '';
     state.detectedLang = null;
     renderResult();
     return;
   }
 
-  const sourceLang = els.sourceLang.value;
-  const targetLang = els.targetLang.value;
-  const cacheKey = `${state.endpoint}|${sourceLang}|${targetLang}|${text}`;
-
-  if (cache.has(cacheKey)) {
-    const cached = cache.get(cacheKey);
-    applyTranslation(cached, text, sourceLang, targetLang, false);
+  const detectedSource = state.sourceLang === 'auto' ? detectLanguage(input) : state.sourceLang;
+  const cacheKey = `${detectedSource}|${state.targetLang}|${input}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    applyTranslation(cached, input, detectedSource, state.targetLang, saveHistory);
     return;
   }
 
   try {
     setLoading(true);
-    const payload = {
-      q: text,
-      source: sourceLang,
-      target: targetLang,
-      format: 'text',
+    const url = `${MYMEMORY_ENDPOINT}?q=${encodeURIComponent(input)}&langpair=${encodeURIComponent(detectedSource)}|${encodeURIComponent(state.targetLang)}`;
+    const response = await requestJSON(url);
+    const translated = {
+      translatedText: response?.responseData?.translatedText || '',
+      detectedLanguage: { language: detectedSource },
+      responseDetails: response?.responseDetails,
     };
-    const translated = await requestJSON(`${state.endpoint}/translate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
 
     cache.set(cacheKey, translated);
-    applyTranslation(translated, text, sourceLang, targetLang, true);
+    applyTranslation(translated, input, detectedSource, state.targetLang, true);
   } catch (error) {
     state.result = `Translation failed: ${error.message || 'unknown error'}`;
     state.detectedLang = null;
     renderResult();
   } finally {
     setLoading(false);
-    void manual;
   }
 }
 
 let debounceId;
 function autoTranslate(force = false) {
   if (debounceId) clearTimeout(debounceId);
-
   if (force) {
     translateNow(false);
     return;
   }
-
-  debounceId = setTimeout(() => {
-    translateNow(false);
-  }, 500);
+  debounceId = setTimeout(() => translateNow(false), 500);
 }
 
 function applyTranslation(data, input, sourceLang, targetLang, saveHistory) {
-  state.result = data.translatedText || data.translated_text || '';
-  const detected = data.detectedLanguage?.language || data.detected_lang || null;
-  state.detectedLang = detected;
+  state.result = data.translatedText || '';
+  state.detectedLang = sourceLang;
   renderResult();
 
   if (saveHistory) {
@@ -338,7 +208,7 @@ function applyTranslation(data, input, sourceLang, targetLang, saveHistory) {
       result: state.result,
       sourceLang,
       targetLang,
-      detectedLang: detected,
+      detectedLang: sourceLang,
     });
   }
 }
@@ -349,7 +219,14 @@ function addHistory(entry) {
     ...entry,
     at: Date.now(),
   };
-  state.history = [normalized, ...state.history.filter((item) => item.input !== entry.input || item.targetLang !== entry.targetLang)].slice(0, 20);
+
+  state.history = [
+    normalized,
+    ...state.history.filter(
+      (item) => !(item.input === entry.input && item.targetLang === entry.targetLang),
+    ),
+  ].slice(0, 20);
+
   persistJSON(STORAGE_KEYS.history, state.history);
   renderHistory();
 }
@@ -358,7 +235,9 @@ function renderResult() {
   const hasResult = Boolean(state.result);
   els.resultTitle.textContent = hasResult ? 'Tradução concluída' : 'Pronto para traduzir';
   els.resultText.textContent = state.result || 'O texto traduzido aparece aqui.';
-  els.detectedBadge.textContent = state.detectedLang ? `Detectado: ${languageName(state.detectedLang)}` : 'Auto-detect';
+  els.detectedBadge.textContent = state.detectedLang
+    ? `Detectado: ${languageName(state.detectedLang)}`
+    : 'Auto-detect';
 }
 
 function renderHistory() {
@@ -371,11 +250,11 @@ function renderHistory() {
   }
 
   state.history.forEach((item) => {
-    const template = els.historyItemTemplate.content.firstElementChild.cloneNode(true);
-    template.querySelector('strong').textContent = `${truncate(item.input, 56)}`;
-    template.querySelector('span').textContent = `${languageName(item.sourceLang)} → ${languageName(item.targetLang)}`;
-    template.addEventListener('click', () => restoreHistory(item));
-    list.append(template);
+    const node = els.historyItemTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector('strong').textContent = truncate(item.input, 56);
+    node.querySelector('span').textContent = `${languageName(item.sourceLang)} → ${languageName(item.targetLang)}`;
+    node.addEventListener('click', () => restoreHistory(item));
+    list.append(node);
   });
 }
 
@@ -389,9 +268,9 @@ function renderFavorites() {
   }
 
   state.favorites.forEach((pair) => {
-    const template = els.favoriteItemTemplate.content.firstElementChild.cloneNode(true);
-    template.textContent = `${languageName(pair.source)} → ${languageName(pair.target)}`;
-    template.addEventListener('click', () => {
+    const node = els.favoriteItemTemplate.content.firstElementChild.cloneNode(true);
+    node.textContent = `${languageName(pair.source)} → ${languageName(pair.target)}`;
+    node.addEventListener('click', () => {
       state.sourceLang = pair.source;
       state.targetLang = pair.target;
       localStorage.setItem(STORAGE_KEYS.sourceLang, state.sourceLang);
@@ -399,7 +278,7 @@ function renderFavorites() {
       syncLanguageSelects();
       autoTranslate(true);
     });
-    list.append(template);
+    list.append(node);
   });
 }
 
@@ -439,7 +318,7 @@ async function copyResult() {
 function speakResult() {
   if (!state.result || !('speechSynthesis' in window)) return;
   const utterance = new SpeechSynthesisUtterance(state.result);
-  utterance.lang = state.targetLang === 'auto' ? 'en' : state.targetLang;
+  utterance.lang = state.targetLang;
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
 }
@@ -456,23 +335,54 @@ function setLoading(isLoading) {
   state.loading = isLoading;
   els.translateBtn.disabled = isLoading;
   els.translateBtn.textContent = isLoading ? 'Traduzindo…' : 'Traduzir';
+  els.apiDot.classList.toggle('is-ok', !isLoading);
+  els.apiDot.classList.toggle('is-warn', isLoading);
+  els.apiStatus.textContent = isLoading ? 'Traduzindo…' : 'MyMemory online';
 }
 
 function setStatus(kind, message) {
   els.apiStatus.textContent = message;
   els.apiDot.classList.remove('is-ok', 'is-warn');
-
-  if (kind === 'ok') {
-    els.apiDot.classList.add('is-ok');
-  } else if (kind === 'warning') {
-    els.apiDot.classList.add('is-warn');
-  }
+  if (kind === 'ok') els.apiDot.classList.add('is-ok');
+  if (kind === 'warning') els.apiDot.classList.add('is-warn');
 }
 
 function renderAll() {
   renderResult();
   renderHistory();
   renderFavorites();
+}
+
+function requestJSON(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  return fetch(url, { signal: controller.signal })
+    .then(async (response) => {
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .catch((error) => {
+      clearTimeout(timeout);
+      throw error;
+    });
+}
+
+function detectLanguage(text) {
+  const value = text.toLowerCase();
+  if (/[ãõáàâéêíóôúç]/.test(value)) return 'pt';
+  if (/[ñ¡¿]/.test(value) || /\b(hola|gracias|usted|para|pero)\b/.test(value)) return 'es';
+  if (/\b(je|bonjour|merci|vous|avec)\b/.test(value) || /[àâæçéèêëîïôœùûüÿ]/.test(value)) return 'fr';
+  if (/\b(der|die|das|und|nicht|ich)\b/.test(value)) return 'de';
+  if (/\b(il|ciao|grazie|perché|con)\b/.test(value)) return 'it';
+  if (/\b(o|a|the|and|you|is|are|this|that)\b/.test(value)) return 'en';
+  return 'en';
+}
+
+function languageName(code) {
+  if (!code) return '';
+  return LANGUAGES.find((item) => item.code === code)?.name || code;
 }
 
 function persistJSON(key, value) {
@@ -486,37 +396,6 @@ function loadJSON(key, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function requestJSON(url, options = {}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-  })
-    .then(async (response) => {
-      clearTimeout(timeout);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-    .catch((error) => {
-      clearTimeout(timeout);
-      throw error;
-    });
-}
-
-function languageName(code) {
-  if (!code) return '';
-  const lang = state.languages.find((item) => item.code === code);
-  return lang?.name || code;
-}
-
-function stripProtocol(value) {
-  return value.replace(/^https?:\/\//, '');
 }
 
 function truncate(value, max) {
