@@ -1,5 +1,5 @@
 const DEFAULT_ENDPOINTS = [
-  'https://libretranslate.de',
+  'https://libretranslate.com',
   'https://translate.argosopentech.com',
   'https://translate.astian.org',
 ];
