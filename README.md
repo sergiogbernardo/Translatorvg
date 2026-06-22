@@ -18,6 +18,10 @@ Abra `index.html` em um servidor estático ou publique a pasta no GitHub Pages.
 
 Se uma instância pública falhar, troque o endpoint na barra superior.
 
+## Deploy
+
+O repositório está preparado para GitHub Pages via GitHub Actions.
+
 ## Observação de arquitetura
 
 Esta versão foi desenhada para funcionar sem backend próprio. Isso a torna
