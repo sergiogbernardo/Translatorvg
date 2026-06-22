@@ -225,7 +225,7 @@ function addHistory(entry) {
     ...state.history.filter(
       (item) => !(item.input === entry.input && item.targetLang === entry.targetLang),
     ),
-  ].slice(0, 20);
+  ].slice(0, 5);
 
   persistJSON(STORAGE_KEYS.history, state.history);
   renderHistory();
