@@ -99,7 +99,7 @@ function wireEvents() {
 
     state.favorites = exists
       ? state.favorites.filter((item) => !(item.source === pair.source && item.target === pair.target))
-      : [...state.favorites, pair].slice(-8);
+      : [...state.favorites, pair].slice(-5);
 
     persistJSON(STORAGE_KEYS.favorites, state.favorites);
     renderFavorites();
