@@ -1,14 +1,14 @@
 :root {
   color-scheme: dark;
-  --bg: #05070b;
-  --panel: rgba(10, 16, 24, 0.88);
-  --panel-strong: rgba(10, 16, 24, 0.96);
+  --bg: #000000;
+  --panel: rgba(0, 0, 0, 0.7);
+  --panel-strong: rgba(2, 6, 23, 0.7);
   --border: rgba(16, 185, 129, 0.15);
   --border-strong: rgba(52, 211, 153, 0.28);
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --text: #e5eef5;
-  --muted: #93a4b8;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
   --accent: #34d399;
   --accent-strong: #10b981;
   --danger: #f87171;
@@ -25,7 +25,7 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top, rgba(52, 211, 153, 0.1), transparent 42%),
+    radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.12), transparent 60%),
     var(--bg);
   color: var(--text);
 }
