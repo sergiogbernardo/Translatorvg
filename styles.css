@@ -127,7 +127,7 @@ button {
 
 .hub-link {
   display: inline-flex;
-  align-self: flex-start;
+  align-self: center;
   border-radius: 12px;
   opacity: 0.85;
   transition: transform 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
