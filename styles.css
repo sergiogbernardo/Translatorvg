@@ -90,8 +90,14 @@ button {
   padding: 24px;
 }
 
+.hero__copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
 .hero h1 {
-  margin: 10px 0 12px;
+  margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(2.2rem, 5vw, 4.2rem);
@@ -127,22 +133,22 @@ button {
 
 .hub-link {
   display: inline-flex;
-  align-self: center;
+  flex-shrink: 0;
   border-radius: 12px;
-  opacity: 0.85;
+  opacity: 0.9;
   transition: transform 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
 }
 
 .hub-link:hover {
   transform: translateY(-1px) scale(1.05);
   opacity: 1;
-  filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.45));
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.5));
 }
 
 .hub-link img {
   display: block;
-  width: 44px;
-  height: 44px;
+  width: clamp(3rem, 6.5vw, 5.4rem);
+  height: clamp(3rem, 6.5vw, 5.4rem);
 }
 
 .status-dot {
