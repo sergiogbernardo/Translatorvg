@@ -187,7 +187,7 @@ async function translateNow(saveHistory = false) {
     cache.set(cacheKey, translated);
     applyTranslation(translated, input, detectedSource, state.targetLang, true);
   } catch (error) {
-    state.result = `Translation failed: ${error.message || 'unknown error'}`;
+    state.result = `Falha na tradução: ${error.message || 'erro desconhecido'}`;
     state.detectedLang = null;
     renderResult();
   } finally {
@@ -319,7 +319,7 @@ async function copyResult() {
       els.copyResult.textContent = 'Copiar';
     }, 1200);
   } catch {
-    setStatus('warning', 'Clipboard indisponível.');
+    setStatus('warning', 'Área de transferência indisponível.');
   }
 }
 
@@ -379,12 +379,12 @@ function requestJSON(url) {
 
 function detectLanguage(text) {
   const value = text.toLowerCase();
-  if (/[ãõáàâéêíóôúç]/.test(value)) return 'pt';
+  if (/[ãõáàâéêíóôúç]/.test(value) || /\b(não|você|olá|obrigado|isso|então|vocês)\b/.test(value)) return 'pt';
   if (/[ñ¡¿]/.test(value) || /\b(hola|gracias|usted|para|pero)\b/.test(value)) return 'es';
   if (/\b(je|bonjour|merci|vous|avec)\b/.test(value) || /[àâæçéèêëîïôœùûüÿ]/.test(value)) return 'fr';
   if (/\b(der|die|das|und|nicht|ich)\b/.test(value)) return 'de';
   if (/\b(il|ciao|grazie|perché|con)\b/.test(value)) return 'it';
-  if (/\b(o|a|the|and|you|is|are|this|that)\b/.test(value)) return 'en';
+  if (/\b(the|and|you|is|are|this|that)\b/.test(value)) return 'en';
   return 'en';
 }
 
@@ -420,6 +420,7 @@ function emptyState(text) {
 function initMatrixRain() {
   const canvas = document.getElementById('matrixCanvas');
   if (!(canvas instanceof HTMLCanvasElement)) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   let context;
   try {
@@ -434,6 +435,7 @@ function initMatrixRain() {
   let height = 0;
   let columns = 0;
   let drops = [];
+  let running = true;
 
   const resize = () => {
     width = window.innerWidth;
@@ -451,6 +453,8 @@ function initMatrixRain() {
   };
 
   const draw = () => {
+    if (!running) return;
+
     context.fillStyle = 'rgba(0, 0, 0, 0.08)';
     context.fillRect(0, 0, width, height);
 
@@ -476,15 +480,26 @@ function initMatrixRain() {
     animationFrame = window.requestAnimationFrame(draw);
   };
 
+  const handleVisibilityChange = () => {
+    running = !document.hidden;
+    if (running) {
+      animationFrame = window.requestAnimationFrame(draw);
+    } else {
+      window.cancelAnimationFrame(animationFrame);
+    }
+  };
+
   resize();
   draw();
   window.addEventListener('resize', resize);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   window.addEventListener(
     'beforeunload',
     () => {
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     },
     { once: true },
   );

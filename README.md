@@ -10,13 +10,14 @@ Versão GitHub Pages do tradutor.
 - histórico local;
 - pares favoritos;
 - cópia e leitura em voz alta;
-- endpoint configurável para usar uma instância pública de tradução.
+- tradução via API pública MyMemory, sem backend próprio.
 
 ## Como usar
 
 Abra `index.html` em um servidor estático ou publique a pasta no GitHub Pages.
 
-Se uma instância pública falhar, troque o endpoint na barra superior.
+A tradução usa a API pública [MyMemory](https://mymemory.translated.net/). O
+indicador de status na barra superior mostra se o provedor está respondendo.
 
 ## Deploy
 
@@ -25,5 +26,5 @@ O repositório está preparado para GitHub Pages via GitHub Actions.
 ## Observação de arquitetura
 
 Esta versão foi desenhada para funcionar sem backend próprio. Isso a torna
-compatível com GitHub Pages, mas deixa o provedor de tradução como dependência
-externa.
+compatível com GitHub Pages, mas deixa o provedor de tradução (MyMemory) como
+dependência externa.
